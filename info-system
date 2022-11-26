@@ -1,0 +1,43 @@
+:if ([/system/script/environment/find name=human]) do={
+    /system/script/environment/remove human
+    :log info "Removed global variable <human>"
+} 
+:delay 5s
+/system/script/run storage-unit-converter
+:log info "Created global variable <human>"
+
+/sys scr run getUptime
+:delay 3s
+:global UpTime
+:global human
+:local ipv4 [/ip cloud get public-address]
+:local ipv6 [/ip cloud get public-address-ipv6]
+:local uptime [/system resource get uptime]
+:local mydatetimeUptime ( [:pick $UpTime 8 10]."/".[:pick $UpTime 5 7]."/".[:pick $UpTime 0 4]." ".[:pick $UpTime 11 13].":".[:pick $UpTime 14 16].":".[:pick $UpTime 17 19] )
+:local CurrentTemp [/system health get [find name=temperature] value]
+:local FreeMemory [$human [/system resource get free-memory]]
+:local TotalMemory [$human [/system resource get total-memory]]
+:local cpu [/system resource get cpu]
+:local cpuCount [/system resource get cpu-count]
+:local cpuFrequency [/system resource get cpu-frequency]
+:local cpuLoad [/system resource get cpu-load]
+:local freeHdd [$human [/system resource get free-hdd-space]]
+:local totalHdd [$human [/system resource get total-hdd-space]]
+:local architectureName [/system resource get architecture-name]  
+:local boardName [/system resource get board-name]
+:local version [/system resource get version]
+:local DeviceName [/system identity get name]
+:local txtotal [$human [/interface get [find name=pppoe-out1] tx-byte]]
+:local rxtotal [$human [/interface get [find name=pppoe-out1] rx-byte]]
+:local sumtotal [$human ([/interface get pppoe-out1 tx-byte]+[/interface get pppoe-out1 rx-byte])]
+
+/tool e-mail send to="<mail-address>" from="Mikrotik $DeviceName" subject="\F0\9F\9A\80 $DeviceName System Status" body="IPv4: $ipv4\nIPv6: $ipv6\n\nTemp: $CurrentTemp C\nUptime: $uptime\nUptime Date: $mydatetimeUptime\nFree Memory: $FreeMemory\nTotal Memory: $TotalMemory\nCPU: $cpu\nCPU Count: $cpuCount\nCPU Frequency: $cpuFrequency\nMHzCPU Load: $cpuLoad %\nFree Disk: $freeHdd\nTotal Disk: $totalHdd\nArchitecture: $architectureName\nBoard Name: $boardName\nSoftware Version: $version\n\nConsumo total:\nDownload: $rxtotal\nUpload: $txtotal\nTotal: $sumtotal"
+
+# START Send Telegram Module
+:local MessageText "\E2\84\B9 <b>$DeviceName System Status:</b>%0AIPv4: $ipv4%0AIPv6: $ipv6%0A----%0ATemp: $CurrentTemp C%0AUptime: $uptime%0AUptime Date: $mydatetimeUptime%0AFree Memory: $FreeMemory%0ATotal Memory: $TotalMemory%0ACPU Load: $cpuLoad %%0ACPU: $cpu%0ACPU Count: $cpuCount%0ACPU Frequency: $cpuFrequency MHz%0AArchitecture: $architectureName%0ABoard Name: $boardName%0ASoftware Version: $version%0AFree Disk: $freeHdd%0ATotal Disk: $totalHdd%0A----%0A<b><i>Consumo total:</i></b>%0ADownload: $rxtotal%0AUpload: $txtotal%0ATotal: $sumtotal"
+:local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]] 
+$SendTelegramMessage MessageText=$MessageText
+# END Send Telegram Module
+
+:log info "Sent Email: WAN IP & System Status"
+:log info "Sent Telegram: WAN IP & System Status"
