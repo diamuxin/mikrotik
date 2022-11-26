@@ -1,0 +1,29 @@
+# By rextended. 
+# https://forum.mikrotik.com/viewforum.php?f=9 
+
+:global convchr do={
+    :local chr $1
+    :if (([:typeof $chr] != "str") or ($chr = "")) do={ :return "" }
+    # ascii length > conv length because escaped " $ \ and question mark
+    :local ascii " !\"#\$%&'()*+,-./0123456789:;<=>\?@ABCDEFGHIJKLMNÑOPQRSTUVWXYZ[\\]^_`abcdefghijklmnñopqrstuvwxyz{|}~ñÑ"
+    :local conv  "_____________-._0123456789_______ABCDEFGHIJKLMNNOPQRSTUVWXYZ______ABCDEFGHIJKLMNNOPQRSTUVWXYZ____nN"
+    :local chrValue [:find $ascii [:pick $chr 0 1] -1]
+    :if ([:typeof $chrValue] = "num") do={
+        :return [:pick $conv $chrValue ($chrValue + 1)]
+    } else={
+        :return "_"
+    }
+}
+
+:delay 1s
+:global convstr do={
+    :global convchr
+    :local string $1
+    :if (([:typeof $string] != "str") or ($string = "")) do={ :return "" }
+    :local lenstr [:len $string]
+    :local constr ""
+    :for pos from=0 to=($lenstr - 1) do={
+        :set constr "$constr$[$convchr [:pick $string $pos ($pos + 1)]]"
+    }
+    :return $constr
+}
