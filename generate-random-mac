@@ -1,0 +1,3 @@
+:put "$[:rndstr length=1 from="0123456789ABCDEF"]\
+      $[:rndstr length=1 from="048C"]\
+      $[:rndstr length=10 from="0123456789ABCDEF"]"
