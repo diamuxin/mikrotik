@@ -1,0 +1,121 @@
+# Copyright by: Gregory Sloop under the GPL3, (see: http://www.gnu.org/licenses/gpl.html)
+# Written by:   Gregory Sloop <gregs@sloop.net> last modified,  Mar 25 2012 , v1.0.5
+# Modified by:  Marco Maske <root@boldsuck.de>  last modified,  Nov 25 2016 , v1.1.0e
+#
+#  DynDNS (acquired by Oracle) update script, changed for EasyDNS.
+#  shameless taken from https://forum.mikrotik.com/viewtopic.php?f=2&t=60018
+
+########################
+# Set needed variables #
+########################
+# EasyDNS account username, dynamic token & hostname.
+# NOTE: Dynamic tokens must be entered in place of your account password, as many updaters only use clear text.
+# EasyDNS only allow the use of the token to avoid exposing your password.
+:local username "your-username"
+:local dyntoken "your-dyntoken"
+:local hostname "your.domain.net"
+
+# Which interface are we checking?
+:local Interface "pppoe-out1"
+
+# The file name where the last recorded IP will be stored,
+# as well as the file name of the easyDNS response.
+:local vLastIPFileName "easydns-lastip.txt"
+:local vEasyDNSResponseFile "easydns-resp.txt"
+
+############################
+# END Set needed variables #
+############################
+
+:local vRawIP
+:local vJustIP
+:local currentIP
+:local previousIP
+:local vlocalurl
+:local vIPChanged false
+:local easyDNSresult
+:local result
+
+# Check for file existance,
+# if not create it...
+# We need to do this before we try to read or write to files.
+:local check [/file find name=$vLastIPFileName]
+:if ( $check = "" ) do= {
+        /file print file=$vLastIPFileName
+        :delay 2
+        /file set [/file find name=$vLastIPFileName] contents=""
+}
+
+# Get the last saved IP from the file.
+:set previousIP [/file get $vLastIPFileName contents]
+
+
+# Print some debug info
+#:log info ("easyDNS: Username = $username")
+#:log info ("easyDNS: Dynamictoken = $dyntoken")
+#:log info ("easyDNS: Hostname = $hostname")
+#:log info ("easyDNS: Interface = $Interface")
+#:log info ("easyDNS: PreviousIP = $previousIP")
+
+
+# This code gets the current IP from the interface.
+# The interface we're checking should be set above.
+# Get the raw IP from the interface, which includes a mask.
+:set vRawIP [:tostr [/ip address get [find interface=$Interface] address]]
+
+# Strip the netmask off the vRawIP address.
+:for i from=( [:len $vRawIP] - 1) to=0 do={
+	:if ( [:pick $vRawIP $i] = "/") do={
+		:set vJustIP [:pick $vRawIP 0 $i]
+	}
+}
+:set currentIP $vJustIP
+
+# Determine if easyDNS update is needed.
+# More easyDNS updater request details:
+# https://cp.easydns.com/support/dynamic/ or https://kb.easydns.com/knowledge/dynamic-dns/
+#
+# Update if the currentIP isn't equal to previousIP.
+:if (($currentIP != $previousIP)) do={
+	:log info ("easyDNS: Hostname = $hostname")
+	:log info ("easyDNS: CurrentIP = $currentIP ==> PreviousIP = $previousIP")
+	:set vlocalurl ("https://" . "$username" . ":" . "$dyntoken" . "@" . "api.cp.easydns.com" . "/dyn/tomato.php?hostname=" . "$hostname" . "&myip=" . "$currentIP")
+#
+# https://username:dyntoken@api.cp.easydns.com/dyn/tomato.php?hostname=example.com&myip=10.0.0.2 => txt response
+# dynsite.php, ez-ipupdate.php, tomato.php => All have the same 3-line txt response.
+# https://username:dyntoken@api.cp.easydns.com/dyn/generic.php?hostname=example.com&myip=10.0.0.2 => html response
+#
+	/tool fetch mode=https url=$vlocalurl dst-path=$vEasyDNSResponseFile
+	:set result [/file get $vEasyDNSResponseFile contents]
+	:set vIPChanged true
+} else={
+	:log info ("easyDNS: No update needed.")
+}
+
+# Get the result status code and pull it out for use.
+# If IPChanged = true
+#	Get result code
+#		Check easyDNS result
+#		if NOERROR or OK then
+#			:set previousIP $currentIP
+#			/file set [/file find name=$vLastIPFileName] contents="$currentIP"
+#			also post the result to the log file
+#		else NOACCESS, NOSERVICE, ILLEGAL INPUT, TOO_FREQ or TOOSOON
+#			post to log file
+#			Don't update previousIP or vLastIPFileName file
+:if ($vIPChanged=true) do={
+	:set result [/file get $vEasyDNSResponseFile contents]
+	:local endLoc [:find $result "\n" -1]
+	:set easyDNSresult [:pick $result -1 ($endLoc)]
+	:put $easyDNSresult
+		:if ( ($easyDNSresult = "NOERROR") || ($easyDNSresult = "OK") ) do={
+			:set previousIP $currentIP
+			:log info ("easyDNS: Update IP needed...")
+			:log info ("easyDNS: Update result: ".$result)
+			/file set [/file find name=$vLastIPFileName] contents="$currentIP"
+		} else={
+			:log info ("easyDNS: Update IP needed...")
+			:log info ("easyDNS: Update FAILED")
+			:log info ("easyDNS: Update result: ".$result)
+		}
+}
