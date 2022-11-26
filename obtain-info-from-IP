@@ -1,0 +1,37 @@
+# By rextended. 
+# https://forum.mikrotik.com/viewforum.php?f=9 
+
+:local sourceip    10.31.42.56
+:local sourcesub   255.255.255.0
+
+:local ip         [:toip $sourceip]
+:local submask    [:toip $sourcesub]
+:local prefix     32
+:local addrspace  (~$submask)
+:local tempsub    [:tonum (~$submask)]
+:while ($tempsub > 0) do={:set tempsub ($tempsub / 2); :set prefix ($prefix - 1)}
+:local network    ($ip & $submask)
+:local broadcast  ($ip | $addrspace)
+:local first      ($network + 1)
+:local last       ($broadcast - 1)
+:put "    Source IP: $sourceip"
+:put "Source Subnet: $sourcesub"
+:put "Subnet Prefix: $prefix"
+:put "  Subnet Mask: $submask"
+:put "Address Space: $addrspace"
+:put "  Network* IP: $network"
+:put "Broadcast* IP: $broadcast"
+:put "    First* IP: $first"
+:put "     Last* IP: $last"
+
+==> Output:
+
+    Source IP: 10.31.42.56
+Source Subnet: 255.255.255.0
+Subnet Prefix: 24
+  Subnet Mask: 255.255.255.0
+Address Space: 0.0.0.255
+  Network* IP: 10.31.42.0
+Broadcast* IP: 10.31.42.255
+    First* IP: 10.31.42.1
+     Last* IP: 10.31.42.254
