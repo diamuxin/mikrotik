@@ -1,0 +1,90 @@
+:local HOST1 "<ip-address-1>"
+:local LOCATION1 "Site1"
+:local HOST2 "<ip-address-2>"
+:local LOCATION2 "Site2"
+:local TIMEOUT "500ms"
+:local COUNT "10"
+### If less than 8 successful reply's Restart IPSec #####
+:local LESSTHAN "8"
+:local deviceName [/system identity get name]
+:local wgInterface1 "<wireguard-interface-1>"
+:local eoipInterface1 "<eoip-interface-1>"
+:local wgInterface2 "<wireguard-interface-2>"
+:local eoipInterface2 "<eoip-interface-2>"
+
+:if ([/ping $HOST1 interval=$TIMEOUT count=$COUNT]<$LESSTHAN) do={
+
+    :log error "Wireguard: Tunnel with $LOCATION1 is down!";
+    :log info "Reconnecting tunnel wireguard..."
+
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 <b>$deviceName:</b> EoIP-IPTV to $LOCATION1 is down. Starting reset Peer+EoIPP...";
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]; 
+    $SendTelegramMessage MessageText=$MessageText;
+    # END Send Telegram Module
+    
+    # Reset wg-peer to Despacho
+    /interface/wireguard/peers/disable [find interface=$wgInterface1]
+    :delay 5
+    /interface/wireguard/peers/enable [find interface=$wgInterface1]
+    
+    # Reset EoIP interface
+    :delay 10
+    /interface/disable $eoipInterface1
+    :delay 5
+    /interface/enable $eoipInterface1
+
+    :log info "Wireguard: Starting reset Peer+EoIP..."
+
+    # We give a time margin to check again
+    :delay 60
+    :if ( [/interface eoip get $eoipInterface1 running]=true ) do={
+    # START Send Telegram Module
+    :local MessageText "\E2\9C\85 <b>$deviceName:</b> EoIP-IPTV to $LOCATION1 is running";
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]; 
+    $SendTelegramMessage MessageText=$MessageText;
+    # END Send Telegram Module
+
+    :log info "Wireguard: EoIP-IPTV to $LOCATION1 connected!"
+    }
+    
+}
+
+:delay 5s
+
+:if ([/ping $HOST2 interval=$TIMEOUT count=$COUNT]<$LESSTHAN) do={
+
+    :log error "Wireguard: Tunnel with $LOCATION2 is down!";
+    :log info "Reconnecting tunnel wireguard..."
+
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 <b>$deviceName:</b> EoIP-IPTV to $LOCATION2 is down. Starting reset Peer+EoIPP...";
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]; 
+    $SendTelegramMessage MessageText=$MessageText;
+    # END Send Telegram Module
+
+    # Reset wg-peer to Apto
+    /interface/wireguard/peers/disable [find interface=$wgInterface2]
+    :delay 5
+    /interface/wireguard/peers/enable [find interface=$wgInterface2]
+
+    # Reset EoIP interface
+    :delay 10
+    /interface/disable $eoipInterface2
+    :delay 5
+    /interface/enable $eoipInterface2
+
+    :log info "Wireguard: Starting reset Peer+EoIP"
+
+    # We give a time margin to check again
+    :delay 60
+    :if ( [/interface eoip get $eoipInterface2 running]=true ) do={
+    # START Send Telegram Module
+    :local MessageText "\E2\9C\85 <b>$deviceName:</b> EoIP-IPTV to $LOCATION2 is running";
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]; 
+    $SendTelegramMessage MessageText=$MessageText;
+    # END Send Telegram Module
+
+    :log info "EoIP-IPTV to $LOCATION2 connected!"
+    }
+}
