@@ -1,0 +1,16 @@
+/ip dhcp-server lease
+:if ($leaseBound = 1) do={
+	:do {
+        :local deviceName [/system identity get name]
+        :local Comment [/ip dhcp-server lease get value-name=comment number=[/ip dhcp-server lease find address=$leaseActIP]]
+       
+        # START Send Telegram Module
+        :local MessageText "\E2\84\B9 <b>$deviceName: Info DHCP</b> %0D%0A Name: $hostName %0D%0A IP: $leaseActIP %0D%0A MAC: $leaseActMAC %0D%0A $Comment"
+        :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+        $SendTelegramMessage MessageText=$MessageText
+        # END Send Telegram Module
+       
+        :log warning "DHCP Alert: $hostName [ $leaseActMAC ] is connect to $deviceName"
+	
+	} on-error={:log error "Telegram notification failure"}
+}
