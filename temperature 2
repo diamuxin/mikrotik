@@ -1,0 +1,25 @@
+:global "tempstatus"
+:global "templaststatus"
+:global "systemtemp" [/system health get [find name=temperature] value]
+# another way:
+# :global "systemtemp" ([/system health get 0]->"value")
+:local DeviceName [/system identity get name]
+
+:if (systemtemp > "42") do={:set "tempstatus" "System temperature is HIGH"}
+:if (systemtemp > "52") do={:set "tempstatus" "System temperature is VERY HIGH"}
+:if (systemtemp > "62") do={:set "tempstatus" "System temperature is CRITICAL"}
+:if (systemtemp < "42") do={:set "tempstatus" "System temperature is NORMAL"}
+
+:if ($"tempstatus" != $"templaststatus") do {
+
+# START Send Telegram Module
+:local MessageText "\E2\9A\A0 <b>Mikrotik $DeviceName</b>%0A$tempstatus: $systemtemp\C2\B0\43";
+:local SendTelegramMessage [:parse [/system script  get MyTGBotSendMessage source]]; 
+$SendTelegramMessage MessageText=$MessageText;
+#END Send Telegram Module
+
+:log info "Aviso: $tempstatus $systemtemp\B0\43"
+:set "templaststatus" $"tempstatus"
+} else {
+:log warning "$tempstatus: $systemtemp\B0\43" 
+}
