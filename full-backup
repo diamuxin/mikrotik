@@ -1,0 +1,73 @@
+:global convstr
+:local time [/system clock get time]
+:local date [/system clock get date]
+:local sysname [/system identity get name]
+:local textfilename
+:local backupfilename
+:local mydatetime
+:local Version [/system resource get version]
+
+# Your FTP configuration data
+:local ftpserver "<ftp-host>"
+:local username "<ftp-username>"
+:local password "<ftp-password>"
+:local port 21
+
+:log info ">>> Start FTP Backup <<<"
+
+# Transforms the text string "ej.may" to numeric 05) and forms date+time.
+:local month [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $date 0 3] ]/3+1)]
+# Applies "zero" to the left for months with a numeric digit.
+:if ([:tonum $month]<10) do={:set month "0$month"}
+# Conforms numeric string with date and time: DDMMYYYYYYY-HHMMMMSS
+:set mydatetime ( [:pick $date 4 6].$month.[:pick $date 7 11]."-".[:pick $time 0 2].[:pick $time 3 5].[:pick $time 6 8] )
+
+# Converts the text in System > Identity to uppercase 
+# and replace spaces with underscores.
+:set sysname [$convstr $sysname]
+
+# Conforms the full name of backups
+:set textfilename ($"mydatetime" . "-" . $"sysname" . ".rsc")
+:set backupfilename ($"mydatetime" . "-" . $"sysname" . ".backup")
+
+# Run the RSC backup according to the ROS v6 or v7 version.
+:if ($Version~"^7") do={
+    /export file=$"textfilename" show-sensitive
+    } else={
+    /export file=$"textfilename"
+}
+# Run the BIN backup
+:execute [/system backup save name=$"backupfilename"]
+
+# Time to complete backup
+:delay 2s
+ 
+# START Send .RSC to FTP Server
+/tool fetch address=$ftpserver mode=ftp user=$username password=$password \
+    src-path=$textfilename dst-path=$textfilename upload=yes port=$port;
+:log info "Backup FTP: Enviado $textfilename via FTP"
+# END Send .RSC to FTP Server
+
+:delay 5s
+
+# START Send .BACKUP to FTP Server
+tool fetch address=$ftpserver mode=ftp user=$username password=$password \
+    src-path=$backupfilename dst-path=$backupfilename upload=yes port=$port;
+:log info "Backup FTP: Enviado $backupfilename via FTP"
+# END Send .BACKUP to FTP Server
+
+# Process time before deleting files
+:delay 10s
+ 
+# File deletion
+/file remove $textfilename
+/file remove $backupfilename
+
+# START Send Telegram Module
+    :local DeviceName [/system identity get name];
+    :local MessageText "\F0\9F\92\BE <b>$DeviceName:</b> Backup OK";
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]];
+    $SendTelegramMessage MessageText=$MessageText;
+# END Send Telegram Module
+
+:log info ">>> FTP Backup finished <<<"
