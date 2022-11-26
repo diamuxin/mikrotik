@@ -1,0 +1,35 @@
+:local noipuser "<noip-user>"
+:local noippass "<noip-password>"
+:local noiphost "xxxxxxx.sytes.net"
+:local inetinterface "pppoe-out1" # your WAN Interface
+
+:global previousNOIP2
+
+:if ([/interface get $inetinterface value-name=running]) do={
+   :local currentIP [/ip address get [find interface="$inetinterface" disabled=no] address]
+
+   :for i from=( [:len $currentIP] - 1) to=0 do={
+       :if ( [:pick $currentIP $i] = "/") do={ 
+           :set currentIP [:pick $currentIP 0 $i]
+       } 
+   }
+
+   :if ($currentIP != $previousNOIP2) do={
+       :log info "No-IP: Current IP $currentIP is not equal to previous IP, update needed"
+       :set previousNOIP2 $currentIP
+
+# The update URL. Note the "\3F" is hex for question mark (?). Required since ? is a special character in commands.
+       :local url "http://dynupdate.no-ip.com/nic/update\3Fmyip=$currentIP"
+       :local noiphostarray
+       :set noiphostarray [:toarray $noiphost]
+       :foreach host in=$noiphostarray do={
+           :log info "No-IP: Sending update for $host"
+           /tool fetch url=($url . "&hostname=$host") user=$noipuser password=$noippass mode=http dst-path=("no-ip_ddns_update-" . $host . ".txt")
+           :log info "No-IP: Host $host updated on No-IP with IP $currentIP"
+       }
+   }  else={
+       :log info "No-IP: Previous IP $previousNOIP2 is equal to current IP, no update needed"
+   }
+} else={
+   :log info "No-IP: $inetinterface is not currently running, so therefore will not update."
+}
