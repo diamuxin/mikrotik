@@ -1,0 +1,22 @@
+:global human
+:local bytes [$human [/ip firewall raw get [/ip firewall raw find src-address-list="Blacklist"] bytes]]
+:local packets [/ip firewall raw get [/ip firewall raw find src-address-list="Blacklist"] packets]
+:local DeviceName [/system identity get name]
+
+:log info ">>> Start RAW reset counters <<<"
+:delay 2s
+
+/ip firewall raw
+:if ([:len [get [find src-address-list="Blacklist"] bytes]] > 1) do={
+    reset-counters [find where src-address-list="Blacklist"]
+    :log info "List Blacklist => Previous stats: $bytes1 - $packets1 packets"
+    
+    # START Send Telegram Module
+    :local MessageText "\E2\9C\85 <b>$DeviceName:</b> Reset counters:%0ABlacklist => $bytes - $packets packets"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+
+}
+
+:log info ">>> End RAW reset counters <<<"
