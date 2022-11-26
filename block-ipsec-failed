@@ -1,0 +1,100 @@
+{
+:local DeviceName [/system identity get name]
+:local logMessage ""
+:local logIp ""
+:local message1 " phase1 negotiation failed\\."
+:local message2 "phase1 negotiation failed due to time up "
+:local message3 "killing ike2 "
+
+/log
+
+:foreach i in=[find where message~$message1 || message~$message2 || message~$message3] do={
+
+    :set logMessage [get $i message]
+
+    :if ($logMessage~$message1) do={
+        :set logIp [:toip [:pick $logMessage 0 [:find $logMessage " "]]]
+            :if ([:len [/ip fire addr find where address=$logIp]] < 1) do={
+            /ip fire addr add address=$logIp list="Blacklist" timeout=7d
+            # /ip fire addr add address=$logIp list=IPSEC timeout=7d
+            :log error message="IPSEC failed: add $logIp to blacklist because negotiation failed"
+            # START Send Telegram Module
+            :local MessageText "\E2\9A\A0 $DeviceName: $logIp added to blacklist because negotiation IPSEC failed.";
+            :local SendTelegramMessage [:parse [/system script  get MyTGBotSendMessage source]]; 
+            $SendTelegramMessage MessageText=$MessageText;
+            # END Send Telegram Module
+            }
+    }
+
+    :if ($logMessage~$message2) do={
+        :set logIp [:toip [:pick [:pick $logMessage ([:find $logMessage ">"]+1) [:len $logMessage]] 0 [:find [:pick $logMessage ([:find $logMessage ">"]+1) [:len $logMessage]] "["]]]
+            :if ([:len [/ip fire addr find where address=$logIp]] < 1) do={
+            /ip fire addr add address=$logIp list="Blacklist" timeout=7d
+            :log error message="IPSEC failed: add $logIp to blacklist because negotiation failed due to time up"
+            # START Send Telegram Module
+            :local MessageText "\E2\9A\A0 $DeviceName: $logIp added to blacklist because negotiation IPSEC failed due to time up.";
+            :local SendTelegramMessage [:parse [/system script  get MyTGBotSendMessage source]]; 
+            $SendTelegramMessage MessageText=$MessageText;
+            # END Send Telegram Module
+            }
+    }
+
+    :if ($logMessage~$message3) do={
+        :set logIp [:toip [:pick [:pick $logMessage ([:find $logMessage "]"]+2) [:len $logMessage]] 0 [:find [:pick $logMessage ([:find $logMessage "]"]+2) [:len $logMessage]] "["]]]
+        :if ([:len [/ip fire addr find where address=$logIp]] < 1) do={
+            /ip fire addr add address=$logIp list="Blacklist" timeout=7d
+            :log error message="Identity not found for peer: $logIp added to blacklist"
+            # START Send Telegram Module
+            :local MessageText "\E2\9A\A0 $DeviceName: $logIp added to blacklist because Identity not found for peer.";
+            :local SendTelegramMessage [:parse [/system script  get MyTGBotSendMessage source]]; 
+            $SendTelegramMessage MessageText=$MessageText;
+            # END Send Telegram Module
+        }
+    }
+
+}
+}
+
+:delay 3s
+
+# Converts the IPs in the "Blacklist" list to cidr notation and passes them to another list.
+# 64.128.35.17 --> 64.126.35.0/24
+# It also creates a Blacklist2 file to save the IPs detected in cidr format.
+
+:foreach id in=[/ip firewall address-list find where list="Blacklist" and [:typeof [:toip $address]]="ip"] do={
+    /ip firewall address-list
+    :local ipAddr [:toip [get $id address]]
+    :if ([:len [find where list=BlacklistIPSEC and ("$ipAddr" in address)]] = 0) do={
+        :local addthis "$($ipAddr & 255.255.255.0)/24"
+        add address=$addthis list=BlacklistIPSEC comment=IPSec
+        # add address=$addthis list=BlacklistIPSEC comment=IPSec timeout=7d
+
+        :local filenameIP "Blacklist2.txt"
+        /file
+        :if ([:len [find where name="flash" and type="disk"]] = 1) do={:set filenameIP "flash/$filenameIP"}
+        :if ([:len [find where name=$filenameIP]] = 0) do={print file="$filenameIP"; :delay 2s; set $filenameIP contents=""; :delay 2s}
+        :local filecontent [get $filenameIP contents]
+        :local newfilecontent "$addthis\r\n$filecontent"
+        set $filenameIP contents=$newfilecontent; :delay 1s
+
+        # FTP Config
+        :local ftpserver "<ftp-server>"
+        :local username "<ftp-user>"
+        :local password "<ftp-password>"
+        :local port 21
+
+        # START Send list to FTP Server
+        /tool fetch address=$ftpserver mode=ftp user=$username password=$password \
+        src-path=$filenameIP dst-path=$filenameIP upload=yes port=$port;
+        :log info "Backup done $filenameIP via FTP"
+        # END Send list to FTP Server
+
+        # START Send Telegram Module
+        :local DeviceName [/system identity get name]
+        :local MessageText "\F0\9F\92\BE <b>$DeviceName:</b> Backup done $filenameIP"
+        :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+        $SendTelegramMessage MessageText=$MessageText
+        # END Send Telegram Module
+
+    }
+}
