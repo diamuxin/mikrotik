@@ -1,0 +1,8 @@
+:local BotToken "XXXXXXXXXX:XXXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXX";
+:local ChatID "XXXXXXXXX";
+:local parseMode "HTML";
+:local SendText $MessageText;
+
+/tool fetch url="https://api.telegram.org/bot$BotToken/sendMessage\?chat_id=$ChatID&parse_mode=$parseMode&text=$SendText" keep-result=no;
+
+:log info "==> Send Telegram message";
