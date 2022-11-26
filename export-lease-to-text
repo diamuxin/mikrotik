@@ -45,3 +45,4 @@
 :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
 $SendTelegramMessage MessageText=$MessageText
 # END Send Telegram Module
+
