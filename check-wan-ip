@@ -1,0 +1,92 @@
+:global currentIP
+:global prefix6
+:local time [/system clock get time]
+:local date [/system clock get date]
+:local thisip [:pick $rawip 0 [:find $rawip ","]]
+:local mydatetime
+:local interfaceIP "pppoe-out1"
+:local rawip [/ipv6 dhcp-client get [find where interface=$interfaceIP] prefix]
+:local filenameIP "iphistory.txt"
+:local DeviceName [/system identity get name]
+
+# FTP Config
+:local ftpserver "<ftp-server-ip>"
+:local username "<ftp-user>"
+:local password "<ftp-password>"
+:local port 21
+
+# Form a numeric string with date and time: DD-MM-YYYYY HH:MM:SS
+:local month [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $date 0 3] ]/3+1)]
+:if ([:tonum $month]<10) do={:set month "0$month"}
+:set mydatetime ( [:pick $date 4 6]."-".$month."-".[:pick $date 7 11]." ".[:pick $time 0 2].":".[:pick $time 3 5].":".[:pick $time 6 8] )
+
+/file
+:if ([:len [find where type="disk"]] = 1) do={:set filenameIP "$filenameIP"}
+:if ([:len [find where name=$filenameIP]] = 0) do={print file="$filenameIP"; :delay 5s; set $filenameIP contents=""}
+
+:if ([:len $currentIP] = 0) do={:set currentIP 0.0.0.0/0}
+:local newIP [/ip address get [find interface="$interfaceIP"] address]
+:set newIP [:pick $newIP 0 [:find $newIP "/" -1]]
+
+:if ($newIP != $currentIP) do={
+
+    # START Send Telegram Module
+    :local MessageText "\E2\84\B9 <b>$DeviceName:</b> IPv4 has changed%0ANew IP: $newIP%0APrevious IPv4: $currentIP"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    #END Send Telegram Module
+
+    # START Send Email
+    /tool e-mail send to="<mail-address>" subject="\E2\84\B9 $DeviceName: IPv4 has changed." \
+        body="New IPv4 $newIP\nPrevious IPv4: $currentIP";
+    # END Send Email
+
+    :log info "IPv4 has changed: $newIP - Previous IPv4: $currentIP"
+    :delay 5s
+    :set currentIP $newIP
+    
+    # Add new IP to the file "iphistory.txt".
+    /file
+    :delay 5s
+    :local filecontent [get $filenameIP contents]
+    :local newfilecontent "new IP: $newIP\t$mydatetime\r\n$filecontent"
+    set $filenameIP contents=$newfilecontent
+
+    # Time to complete backup
+    :delay 2s
+
+    # START Send list to FTP Server
+    /tool fetch address=$ftpserver mode=ftp user=$username password=$password \
+        src-path=$filenameIP dst-path=$filenameIP upload=yes port=$port;
+    :log info "Backup $filenameIP via FTP done!
+    # END Send list to FTP Server
+
+
+    # START Send Telegram Module
+    :local MessageText "\F0\9F\92\BE <b>$DeviceName:</b> Backup $filenameIP OK"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText;
+    # END Send Telegram Module
+
+} else={
+   :log info "IPv4 not changed: $newIP";
+}
+
+:if ($prefix6 != $thisip) do={
+
+    # START Send Telegram Module
+    :local MessageText "\E2\84\B9 <b>$DeviceName:</b> IPv6 has changed:%0A$thisip"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+    
+    :log info "New IPv6 detected: $thisip - Previous: $prefix6"
+    
+    :delay 5s
+    :set prefix6 $thisip
+    :delay 1s
+
+} else={
+    :log info "IPv6 not changed: $thisip"
+    :set prefix6 $thisip
+}
