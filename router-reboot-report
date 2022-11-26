@@ -1,0 +1,70 @@
+:delay 1
+
+:local reportBody ""
+
+:local deviceName [/system identity get name]
+:local date [/system clock get date]
+:local time [/system clock get time]
+:local hwModel [/system routerboard get model]
+:local rosVersion [/system package update get installed-version]
+:local rosAvailable [/system package update get latest-version]
+:local currentFirmware [/system routerboard get current-firmware]
+:local upgradeFirmware [/system routerboard get upgrade-firmware]
+:local mydatetime
+:local mydatetimeUp
+:local mydatetimeDo
+:local mydatetimeUptime
+
+# Form a string with date and time: "DD/MM/YYYYYY at HH:MM:SS".
+:local month [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $date 0 3] ]/3+1)]
+:if ([:tonum $month]<10) do={:set month "0$month"}
+:set mydatetime ( [:pick $date 4 6]."/".$month."/".[:pick $date 7 11]." "."at"." ".[:pick $time 0 2].":".[:pick $time 3 5].":".[:pick $time 6 8] )
+
+# PPPoE Uptime time format changeover (my WAN Interface)
+# Structure: oct/27/2022 02:30:50
+:local dateUptime [/interface get [/interface find where name=pppoe-out1] last-link-up-time]
+:local monthUp [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $dateUptime 0 3] ]/3+1)]
+:if ([:tonum $monthUp]<10) do={:set monthUp "0$monthUp"}
+:set mydatetimeUp ( [:pick $dateUptime 4 6]."/".$monthUp."/".[:pick $dateUptime 7 11]." ".[:pick $dateUptime 12 14].":".[:pick $dateUptime 15 17].":".[:pick $dateUptime 18 20] )
+
+# pppoe-out1 Downtime Time Format Changeover
+# Structure: oct/27/2022 02:30:50
+:local dateDowntime [/interface get [/interface find where name=pppoe-out1] last-link-down-time]
+:local monthDo [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $dateDowntime 0 3] ]/3+1)]
+:if ([:tonum $monthDo]<10) do={:set monthDo "0$monthUp"}
+:set mydatetimeDo ( [:pick $dateDowntime 4 6]."/".$monthDo."/".[:pick $dateDowntime 7 11]." ".[:pick $dateDowntime 12 14].":".[:pick $dateDowntime 15 17].":".[:pick $dateDowntime 18 20] )
+
+# Uptime time format change
+# Structure: 2022-10-26 19:56:41
+/sys scr run getUptime
+:delay 3s
+:global UpTime
+:set mydatetimeUptime ( [:pick $UpTime 8 10]."/".[:pick $UpTime 5 7]."/".[:pick $UpTime 0 4]." ".[:pick $UpTime 11 13].":".[:pick $UpTime 14 16].":".[:pick $UpTime 17 19] )
+
+:set reportBody ($reportBody . "Router Reboot Report for $deviceName\n")
+:set reportBody ($reportBody . "Report generated on $mydatetime\n\n")
+
+:if ([:typeof $dateUptime] = "nil") do={:set reportBody ($reportBody . "PPPoE Last link Up time: Empty\n")} else={:set reportBody ($reportBody . "pppoe-out1 Last link Up time: $mydatetimeUp\n")}
+
+:if ([:typeof $dateDowntime] = "nil") do={:set reportBody ($reportBody . "PPPoE Last link Down time: Empty\n")} else={:set reportBody ($reportBody . "pppoe-out1 Last link Down time: $mydatetimeDo\n")}
+
+:set reportBody ($reportBody . "Uptime from: $mydatetimeUptime\n\n")
+:set reportBody ($reportBody . "Hardware Model: $hwModel\n")
+:set reportBody ($reportBody . "RouterOS current Package: $rosVersion\n")
+:set reportBody ($reportBody . "RouterOS available Package: $rosAvailable\n")
+:set reportBody ($reportBody . "Current Firmware: $currentFirmware\n")
+:set reportBody ($reportBody . "Upgrade Firmware: $upgradeFirmware")
+
+:set reportBody ($reportBody . "\n\n=== Critical Log Events ===\n" )
+
+:local ts
+:local msg
+foreach i in=([/log find where topics~"critical"]) do={
+:set $ts [/log get $i time]
+:set $msg [/log get $i message]
+:set $reportBody ($reportBody  . $ts . " " . $msg . "\n" )
+}
+
+:set reportBody ($reportBody . "\n=== end of report ===\n")
+
+/tool e-mail send to="<mail-address>" subject="\F0\9F\94\94 [$deviceName] Reboot Report" body=$reportBody
