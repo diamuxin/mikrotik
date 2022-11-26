@@ -1,0 +1,22 @@
+# Created Jotne 2019 v1.0
+#
+# Add user who tries wrong user or password to address-list
+#
+# Schedule it to run every 5 min.
+# It will then add the IP for the user with wrong username 
+# or password to address list Wrong_User for 24 hour.
+#
+# Log Message: "login failure for user ginesidh-test from 192.168.88.18 via winbox"
+
+# Find all "login failure" error last 5 min
+:local loglist [:toarray [/log find  time>([/system clock get time] - 5m) message~"login failure"]]
+
+# for all error do
+:foreach i in=$loglist do={
+# find message
+	:local logMessage [/log get $i message]
+# find ip
+	:local ip [:pick $logMessage ([:find $logMessage "from"]+5) [:find $logMessage " via"]]
+# Add ip to accesslist	
+	/ip firewall address-list add address=$ip list=Wrong_User timeout=24h
+	}
