@@ -1,0 +1,9 @@
+/ip firewall raw
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=windowsupdate.microsoft.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=download.microsoft.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=test.stats.update.microsoft.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=ntservicepack.microsoft.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=*.download.windowsupdate.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=*.update.microsoft.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=download.windowsupdate.com
+add action=drop chain=prerouting comment="Blok Windows Update" protocol=tcp tls-host=*.windowsupdate.microsoft.com
