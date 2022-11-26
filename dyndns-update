@@ -1,0 +1,27 @@
+:global ddnsuser "USER_NAME"
+:global ddnspass "PASSWORD"
+:global theinterface "pppoe-out1"
+:global ddnshost1 "YOUR_HOST_NAME"
+
+# IPv4, remove /32
+:local test   [ /ip address get [/ip address find interface=$theinterface ] address ]
+:local ipfresh [ :pick $test 0 [find $test "/"]]
+
+#get from Web
+:set   test      ([/tool fetch url="https://ip6only.me/api/" as-value output=user]->"data")
+:local ipfresh6  [:pick $test ([:find $test "IPv6,"] + 5) [:find $test ",v" ] ]
+
+:if ([ :typeof $ipfresh ] = nil ) do={
+   :log info ("DynDNS: No ip address on $theinterface .")
+} else={
+   :log info ("DynDNS: IP-Fresh = $ipfresh,$ipfresh6")
+   
+   #both IPv4 and IPv6 here
+   :global str1 "nic/update\?hostname=$ddnshost1&myip=$ipfresh,$ipfresh6&wildcard=NOCHG&mx=NOCHG&backmx=NOCHG"
+
+   :set test ([/tool fetch url="https://members.dyndns.org/$str1" user=$ddnsuser password=$ddnspass  as-value output=user]->"data")
+
+   :local logstr  "DynDNS: IP updated to $ipfresh and  $ipfresh6!"
+   :log info $logstr
+   /tool/e-mail/send to=MY_EMAIL_ADDR  subject=DynDNS body=$logstr
+}
