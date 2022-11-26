@@ -1,0 +1,19 @@
+/system script environment
+:foreach item in=[find] do={
+    :local vname [get $item name]
+    :local vvalue [get $item value]
+    /ip firewall layer7
+    remove [find where name=$vname]
+    :if (([:typeof [:find [:tostr $vvalue] "(eval " -1]] = "nil") and ([:typeof [:find [:tostr $vvalue] "(evl " -1]] = "nil")) do={
+        :if ([:find $vvalue "*" -1] = 0) do={:set vvalue "ID$vvalue"}
+        add name=$vname regex="$vvalue"
+    } else={
+        :if ([:typeof $vvalue] = "code") do={
+            add name=$vname regex="(code)"
+        } else={
+            add name=$vname regex="(function)"
+        }
+    }
+        :delay 10ms
+        :execute "/ip firewall layer7 set [find where name=$vname] comment=[:typeof \$$vname]"
+}
