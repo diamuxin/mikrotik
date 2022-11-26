@@ -1,0 +1,47 @@
+# Your FTP configuration data
+:local ftpserver "<ftp-host>"
+:local username "<ftp-username>"
+:local password "<ftp-password>"
+:local port 21
+
+:local output
+:local filename
+:local time [/system clock get time]
+:local date [/system clock get date]
+:local sysname [/system identity get name]
+:local mydatetime
+
+# Date format to text
+:local month [:tostr ([:find "janfebmaraprmayjunjulaugsepoctnovdec" [:pick $date 0 3] ]/3+1)]
+:if ([:tonum $month]<10) do={:set month "0$month"}
+:set mydatetime ( [:pick $date 4 6].$month.[:pick $date 7 11]."-".[:pick $time 0 2].[:pick $time 3 5].[:pick $time 6 8] )
+
+:set filename ($"mydatetime"."-".$"sysname"."-"."leases")
+
+/ip dhcp-server lease
+:foreach i in=[find] do={
+    :local hname [get $i host-name]
+    :if ([:typeof $hname] = "nil") do={
+        :set output ($output . ([get $i address]."\t".[get $i mac-address]."\t".[get $i comment]) . "\n")
+    } else={
+        :set output ($output . ([get $i address]."\t".[get $i mac-address]."\t".[get $i host-name]) . "\n")
+    }
+}
+
+/file print file=$filename
+:delay 2s
+/file set $filename contents=$output
+
+:delay 2s
+/tool fetch address=$ftpserver mode=ftp user=$username password=$password \
+    src-path=$filename dst-path=$filename upload=yes port=$port;
+:log info "FTP: Send $filename"
+
+:delay 10s
+/file remove $filename
+
+# START Send Telegram Module
+:local MessageText "\F0\9F\92\BE <b>$sysname:</b> Lease List send via FTP!"
+:local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+$SendTelegramMessage MessageText=$MessageText
+# END Send Telegram Module
