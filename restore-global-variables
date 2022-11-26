@@ -1,0 +1,32 @@
+/ip firewall layer7
+:foreach item in=[find where comment~"^(array|bool|id|ip|ip-prefix|ip6|ip6-prefix|num|str|time|code|nothing|nil)\$"] do={
+    :local vname  [get $item name]
+    :local vvalue [get $item regexp]
+    :local vtype  [get $item comment]
+    :if ($vvalue = "(code)"    ) do={:set vtype "code"    }
+    :if ($vvalue = "(function)") do={:set vtype "function"}
+    /system script environment
+    remove [find where name=$vname]
+    :if ($vtype~"^(array|id|ip|ip6|num|str|time)\$") do={
+        :if ($vtype = "id") do={
+            :set vvalue [:pick $vvalue [:find $vvalue "*" -1] [:len $vvalue]]
+            :execute ":global $vname [:to$vtype $vvalue]"
+        } else={
+            :execute ":global $vname [:to$vtype [/ip firewall layer7 get [find where name=$vname] regexp]]"
+        }
+    } else={
+        :if ($vtype~"^(ip-prefix|ip6-prefix|nothing|nil)\$") do={
+            :if ($vtype~"^(ip-prefix|ip6-prefix)\$") do={:execute ":global $vname [[:parse \":return $vvalue\"]]"}
+            :if ($vtype="nothing") do={:execute ":global $vname [:nothing]"}
+            :if ($vtype="nil") do={:execute ":global $vname"}
+        } else={
+            :if ($vtype~"^(bool)\$") do={
+                :execute ":global $vname [:to$vtype $vvalue]"
+            } else={
+                :log error "Unknow variable type >$vtype<"
+                :execute ":global $vname [/ip firewall layer7 get [find where name=$vname] regexp]"
+            }
+        }
+    }
+    :delay 10ms
+}
