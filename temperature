@@ -1,0 +1,20 @@
+/system 
+:local tempSystem [:tonum ([health get [find where name=temperature]]->"value")]
+:local DeviceName [identity get name]
+:local tempMax    45
+
+:if ($tempSystem >= $tempMax) do={
+    :log error "HIGH Temperature Alert: $tempSystem\B0\43"
+    
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 <b>Router $DeviceName:</b>%0AHIGH Temperature Alert: $tempSystem\C2\B0\43"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+    
+    /tool e-mail send to="ginesidh@gmail.com" subject="\E2\9A\A0 [$DeviceName] HIGH Temperature Alert" \
+    body="The temperature in the router has reached a value of $tempSystem\C2\B0\43"
+
+} else={
+    :log info "Temperature OK: $tempSystem\B0\43"
+}
