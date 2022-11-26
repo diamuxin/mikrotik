@@ -1,0 +1,29 @@
+/ip firewall address-list
+:local update do={
+    :do {
+    # List name to modify
+    :local List "BlackList"
+    :local data ([:tool fetch url=$url output=user as-value]->"data")
+    :local array [find dynamic list=$List]
+    :foreach value in=$array do={:set array (array,[get $value address])}
+    :while ([:len $data]!=0) do={
+        :if ([:pick $data 0 [:find $data "\n"]]~"^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}") do={
+            :local ip ([:pick $data 0 [:find $data $delimiter]].$cidr)
+            :do {add list=$List address=$ip comment=$description timeout=1d} on-error={
+                :do {set ($array->([:find $array $ip]-[:len $array]/2)) timeout=1d} on-error={}
+                }   
+        }
+        :set data [:pick $data ([:find $data "\n"]+1) [:len $data]]
+        }
+    } on-error={:log warning "Address list <$description> update failed"}
+}
+$update url=http://feeds.dshield.org/block.txt description=DShield delimiter=("\t") cidr=/24
+$update url=http://www.spamhaus.org/drop/drop.txt description="Spamhaus DROP" delimiter=("\_")
+$update url=http://www.spamhaus.org/drop/edrop.txt description="Spamhaus EDROP" delimiter=("\_")
+$update url=https://sslbl.abuse.ch/blacklist/sslipblacklist.txt description="Abuse.ch SSLBL" delimiter=("\r")
+$update url=https://raw.githubusercontent.com/ktsaou/blocklist-ipsets/master/firehol_level2.netset description="FireHOL Level2" delimiter=("\n")
+$update url=https://lists.blocklist.de/lists/all.txt description="BlockList.de" delimiter=("\n")
+
+
+
+
