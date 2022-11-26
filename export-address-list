@@ -1,0 +1,15 @@
+/file/print file=blacklist
+delay 5s
+/ip firewall address-list
+:local myList "blacklist"
+:local output "/ip firewall address-list\r\n"
+:foreach i in=[find] do={
+  :local name [get $i list]
+  :foreach j in=$myList do={
+    :if ($name = "$j") do={
+      :set output ($output . "add address=$[get $i address] list=$name\r\n")
+	}
+  }
+}
+:put $output
+/file/set blacklist.txt contents=$output
