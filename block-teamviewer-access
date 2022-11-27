@@ -1,0 +1,14 @@
+/ip firewall address-list
+add address=92.51.128.0/18 comment=Teamviewer_Server list=Teamviewer
+add address=37.48.64.0/18 comment=Teamviewer_Server list=Teamviewer
+add address=217.146.26.0/24 comment=Teamviewer_Server list=Teamviewer
+add address=88.198.0.0/16 comment=Teamviewer_Server list=Teamviewer
+add address=37.252.253.0/24 comment=Teamviewer_Server list=Teamviewer
+add address=178.255.155.0/24 comment=Teamviewer_Server list=Teamviewer
+add address=159.8.64.0/18 comment=Teamviewer_Server list=Teamviewer
+add address=178.77.64.0/18 comment=Teamviewer_Server list=Teamviewer
+ 
+/ip firewall filter
+add action=drop chain=forward comment="Drop all traffic from address on \\ Teamviewer \\ address list" src-address-list=Teamviewer
+add action=drop chain=input comment="Drop all traffic from address on \\ Teamviewer \\ address list" src-address-list=Teamviewer
+
