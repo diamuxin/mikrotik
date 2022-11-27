@@ -1,0 +1,13 @@
+{
+:local deviceName [/system identity get name]
+:local Date [/system clock get date]
+/log print file=logs where buffer=memory
+/system logging action
+set [find where target=memory] memory-lines=1
+:delay 1s
+set [find where target=memory] memory-lines=1000
+:delay 3s
+/tool e-mail send to="<mail-address>" subject="$deviceName logs" body="$Date log file" file=logs.txt;
+:delay 1s
+/file remove logs.txt
+}
