@@ -1,0 +1,6 @@
+/ip firewall mangle
+add action=mark-connection chain=prerouting comment=Youtube content=youtube disabled=no new-connection-mark=youtube_in  passthrough=yes
+add action=mark-packet chain=prerouting comment="" connection-mark=youtube_in disabled=no new-packet-mark=youtube_in passthrough=no
+
+/queue tree
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=1M name=youtube_down packet-mark=youtube_in parent=global priority=1 queue=default
