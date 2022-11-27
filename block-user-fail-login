@@ -6,7 +6,7 @@
 # It will then add the IP for the user with wrong username 
 # or password to address list Wrong_User for 24 hour.
 #
-# Log Message: "login failure for user ginesidh-test from 192.168.88.18 via winbox"
+# Log Message: "login failure for user user-test from 192.168.88.18 via winbox"
 
 # Find all "login failure" error last 5 min
 :local loglist [:toarray [/log find  time>([/system clock get time] - 5m) message~"login failure"]]
