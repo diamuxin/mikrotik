@@ -1,0 +1,17 @@
+# Leds OFF
+:if ([system leds settings get all-leds-off] = "never") do={
+/system leds settings set all-leds-off=immediate 
+} else={
+/system leds settings set all-leds-off=never 
+}
+:log info "INFO: Leds OFF"
+
+
+# Leds ON
+:if ([system leds settings get all-leds-off] = "never") do={
+/system leds settings set all-leds-off=immediate 
+} else={
+/system leds settings set all-leds-off=never 
+}
+:log info "INFO: Leds ON"
+
