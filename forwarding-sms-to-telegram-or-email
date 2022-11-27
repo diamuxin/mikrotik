@@ -1,0 +1,25 @@
+:log info "SMS script started"
+:local smsPhone
+:local smsMessage
+:local smsContent
+
+:foreach i in=[/tool sms inbox find message=""] do={
+	/tool sms inbox remove $i
+}
+
+:foreach i in=[/tool sms inbox find] do={
+    :set smsPhone [/tool sms inbox get $i phone]
+    :set smsMessage [/tool sms inbox get $i message]
+    :set smsContent "$smsPhone $smsMessage"
+    
+    # send by telegram
+    /tool fetch url="https://api.telegram.org/botXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/sendmessage?chat_id=-XXXXXXXXX&text=$smsContent"
+    
+    :delay 3s
+    
+    # send e-mail
+    /tool e-mail send to=your@domain.com subject="SMS $smsPhone" body=$smsContent
+    :delay 3s
+    /tool sms inbox remove $i
+}
+:log info "SMS script complete"
