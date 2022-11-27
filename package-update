@@ -1,0 +1,21 @@
+/system package update check-for-updates
+
+:if ([/system package update get installed-version] != [/system package update get latest-version] ) do={
+
+    :local sysname [/system identity get name]
+    
+    /tool e-mail send to="you@mail.com" from="Mikrotik $sysname" subject="Upgrade package available on router $[/system identity get name]" body="Upgrade package RouterOS available on router $[/system identity get name] from $[/system package update get installed-version] to $[/system package update get latest-version]"
+	
+    # START Send Telegram Module
+    :local MessageText "\E2\84\B9 <b>$sysname:</b>%0AUpgrade packages available from $[/system package update get installed-version] to $[/system package update get latest-version]"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    #END Send Telegram Module
+    
+    :log warning "Upgrade packages available from $[/system package update get installed-version] to $[/system package update get latest-version]";
+	
+    /system package update install
+
+} else={
+    :log info "Upgrade: There is no need to upgrade. Current: $[/system package update get installed-version]"
+} 
