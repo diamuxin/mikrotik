@@ -1,0 +1,18 @@
+:local currentFirmware [system routerboard get current-firmware]
+:local upgradeFirmware [system routerboard get upgrade-firmware]
+:local systemName      [/system identity get value-name=name]
+
+:if ($currentFirmware != $upgradeFirmware) do={
+    :log info "WARNING: New firmware $upgradeFirmware is available for installation.";
+
+    /tool e-mail send to="ginesidh@gmail.com" from="Mikrotik Despacho" subject="Firmware upgrade available" body="A new firmware upgrade has been detected: $upgradeFirmware. Please upgrade as soon as possible from the current $currentFirmware version for security reasons.";
+
+    # START Send Telegram Module
+    :local MessageText "\E2\84\B9 <b>Despacho:</b> A new firmware has been detected: $upgradeFirmware. Please upgrade as soon as possible from the current $currentFirmware for security reasons."
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+
+} else={
+    :log info "Firmware: No need to upgrade. Current: $currentFirmware"
+}
