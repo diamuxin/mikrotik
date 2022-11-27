@@ -1,0 +1,76 @@
+# Average CPU Load Notification.
+# This will email you once when average CPU Load reaches the set CPU Threshold value.
+# When average CPU Load drops back below CPU Threshold the email notification is reset.
+# Set up the scheduler to run this at 1-5 second intervals (Sample Rate).
+# Original credit goes to rgraham - modified by hartz.
+
+# Threshold is the value that will activate the alert when reached by average CPU Load (1-100)
+:local cputhreshold 80;
+
+# Arraysize is the number of CPU Load samples to keep.
+# Experiment with this value to incease or decrease the number of samples.
+# The greater the value the longer the time that the cpu-load average is calculated for.
+:local arraysize 20;
+
+# Misc variables for stuff and things.
+:local cpuload 0;
+:local arraylen 0;
+:local arraypos 0;
+:local arraytot 0;
+:global avgcpuload 0;
+:global cpuarray;
+:global highavgcpuload;
+:global cpualertemail;
+
+# Get CPU Load samples, limit cpuarray to array size.
+:set cpuload [/system resource get cpu-load];
+:set cpuarray ( [:toarray $cpuload] + $cpuarray );
+:set cpuarray [:pick $cpuarray 0 $arraysize];
+
+# Add up all values in array.
+:set arraypos 0;
+:set arraylen [:len $cpuarray];
+:while ($arraypos < $arraylen) do={
+:set arraytot ($arraytot + [:pick $cpuarray $arraypos] );
+:set arraypos ($arraypos +1)}
+
+# Divide sum of array values by the number of values in cpuarray.
+:set avgcpuload ($arraytot / [:len $cpuarray]);
+:if ([:len $highavgcpuload] = 0) do={:set highavgcpuload $avgcpuload}
+:if ([$highavgcpuload] < [$avgcpuload]) do={:set highavgcpuload $avgcpuload}
+
+# Display results in Terminal window.
+:log info ("CPU Load Captures:");
+:delay 1s
+:log info $cpuarray;
+:log info ("Array Total: $arraytot");
+:log info ("Array size: $arraysize");
+:log info ("CPU Load – Avg: $avgcpuload High: $highavgcpuload");
+
+# Send alert email.
+:if ($avgcpuload >= $cputhreshold) do={
+:if ($cpualertemail != "true") do={
+
+# Build message body.
+:local body "";
+:set body ($body."Uptime: ".[/system resource get value-name="uptime"]."\r\n");
+:set body ($body."Memory Total / Free: ".[/system resource get value-name="total-memory"] / "1024" / "1024"."MB / ".[/system resource get value-name="free-memory"] / "1024" / "1024"."MB\r\n");
+:set body ($body."CPU Load: ".[/system resource get value-name="cpu-load"]."%\r\n");
+:set body ($body."CPU Average: ".$avgcpuload."%\r\n");
+:set body ($body."CPU High: ".$highavgcpuload."%\r\n");
+:set body ($body."CPU Alert Threshold: ".$cputhreshold."%\r\n");
+:set body ($body."Connections: ".[/ip firewall connection print count-only]."\r\n");
+:set highavgcpuload;
+
+# Send email and set variable so no further alerts are sent until average goes below threshold.
+
+# START Send Email
+/tool e-mail send to="<mail-address>" subject="\F0\9F\94\93 $DeviceName: CPU alert" body="$body" file="";
+# END Send Email
+
+:set cpualertemail "true";
+}
+} else={
+# Reset alert if average is less than threshold.
+:set cpualertemail "false";
+}
