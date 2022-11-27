@@ -1,0 +1,14 @@
+/system scheduler add comment="Find unauthorized devices and block" disabled=no interval=5m name=block_unauthorized_devices on-event=block_unauthorized_devices policy=read,write,test
+
+:foreach i in=[/ip dhcp-server lease find dynamic=yes] do={
+   :local dynamicIP [/ip dhcp-server lease get $i address];
+   :local dynamicMAC [/ip dhcp-server lease get $i mac-address];
+   :local dynamicHOST [/ip dhcp-server lease get $i host-name];
+   :local macfound [/ip firewall filter find src-mac-address=$dynamicMAC];
+   :if ($macfound != "") do={
+        :log info ($dynamicMAC. " has already been leaked")
+    } else= {
+        /ip firewall filter add chain=forward src-mac-address=$dynamicMAC action=drop comment=($dynamicHOST . " - " . $dynamicMAC . " Unknown device")
+        :log info ("Adding " . $dynamicMAC. " to firewall filter")
+    }
+}
