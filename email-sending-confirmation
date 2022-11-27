@@ -1,0 +1,12 @@
+{
+# Wait until other script in bg end sending e-mail now...
+while ([tool e-mail get last-status] = "in-progress") do={delay 1s}
+delay 2s
+
+# Now I send my e-mail who has wrong smtp server and reach timeout...
+tool e-mail send server=1.1.1.1 subject="WrongSMTP" to=name@domain.tld
+while ([tool e-mail get last-status] = "in-progress") do={delay 1s}
+local EMailStatus [tool e-mail get last-status]
+if ($EMailStatus = "failed") do={put "ERROR"}
+if ($EMailStatus = "succeeded") do={put "SUCCESS"}
+}
