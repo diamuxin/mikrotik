@@ -1,0 +1,21 @@
+# Setup
+:local DHCPSERVER "dhcp-name";
+# End Setup 
+ 
+:foreach i in=[/ip dhcp-server lease find dynamic=yes active-server=$DHCPSERVER] do={
+    :local DhcpDynMAC [/ip dhcp-server lease get $i mac-address];
+                :local DhcpDynCLIENTID [/ip dhcp-server lease get $i active-client-id];
+    :local DhcpDynHOST [/ip dhcp-server lease get $i host-name];
+    :local phoneNAME [:pick $DhcpDynHOST 0 4];
+ 
+    :if ( ($phoneNAME="BLUS") || ($phoneNAME="iPad") || ($phoneNAME="andr") || ($phoneNAME="Andr") || ($phoneNAME="Wind") || ($phoneNAME="iPho") || ($phoneNAME="BLAC") ) do={
+        /ip dhcp-server lease add block-access=yes mac-address="$DhcpDynMAC" use-src-mac=yes comment="$DhcpDynHOST" server="$DHCPSERVER" client-id="$DhcpDynCLIENTID";
+    }
+}
+/ip dhcp-server lease remove [find host-name~"BLUS*"]
+/ip dhcp-server lease remove [find host-name~"android*"]
+/ip dhcp-server lease remove [find host-name~"Android*"]
+/ip dhcp-server lease remove [find host-name~"Windows*"]
+/ip dhcp-server lease remove [find host-name~"iPad*"]
+/ip dhcp-server lease remove [find host-name~"iPhone*"]
+/ip dhcp-server lease remove [find host-name~"BLACKBERRY*"]
