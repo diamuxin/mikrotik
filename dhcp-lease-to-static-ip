@@ -1,0 +1,31 @@
+/ip dhcp-server lease
+# Test if this is a Bound session and the lease is a dynamic one. Do not change older reservation
+:if (($leaseBound=1) && ([find where dynamic mac-address=$leaseActMAC]!="")) do={
+
+	# Get the lease number
+	:local Lease [find mac-address=$leaseActMAC]
+	
+	# Get date, time and Device name
+	:local date [/system clock get date]
+	:local time [/system clock get time]
+	:local DeviceName [/system identity get name]
+	
+	# Make the lease static	
+	make-static $Lease
+
+	# Get host name
+	:local Name [get $Lease host-name ] 
+	
+	# Add date and time as a comment to show when it was seen first time	
+	comment comment="$date $time $Name" $Lease
+
+    :delay 2s
+    # START Send Telegram Module
+    :local MessageText "\E2\84\B9 $DeviceName: Info DHCP %0D%0A Nombre: $Name %0D%0A IP: $leaseActIP %0D%0A MAC: $leaseActMAC %0D%0A Comentario: $comment"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    #END Send Telegram Module
+	
+	# Send a message to the log	
+	:log info message="DHCP Info: IP=$leaseActIP MAC=$leaseActMAC name=$Name"
+}
