@@ -1,0 +1,14 @@
+# By rextended. 
+# https://forum.mikrotik.com/viewforum.php?f=9 
+{
+/system resource
+:local totalhdd [get total-hdd-space]
+:local freehdd [get free-hdd-space]
+:local percfree ((100 * $freehdd) / $totalhdd)
+:put "Total Space: $totalhdd"
+:put "Free Space: $freehdd"
+:put "$percfree% free disk space, $(100 - $percfree)% busy"
+:local perdec "000$((100 * $freehdd * 100) / $totalhdd)"
+:set perdec "$[:tonum [:pick $perdec 0 ([:len $perdec]-2)]],$[:tonum [:pick $perdec ([:len $perdec]-2) [:len $perdec]]]"
+:put "$perdec% free disk space"
+}
