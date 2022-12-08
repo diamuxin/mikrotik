@@ -1,0 +1,24 @@
+# ------------ Script Begin ---------------
+{
+:local deviceName [/system identity get name]
+:local interFace "pppoe-out1" # <-- Here your WAN Interface
+:if (([/interface pppoe-client monitor $interFace as-value once]->"status") != "connected") do={
+    :delay 2s
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 <b>$deviceName:</b> The WAN interface is down."
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+
+    # We give a time margin to make a check again
+    :delay 60s
+    :if (([/interface pppoe-client monitor $interFace as-value once]->"status") = "connected") do={
+        # START Send Telegram Module
+        :local MessageText "\E2\9C\85 <b>$deviceName:</b> The WAN interface has recovered"
+        :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+        $SendTelegramMessage MessageText=$MessageText
+        # END Send Telegram Module
+    }
+} else={:put "$interFace is connect!"}
+}
+# ------------ End Script ---------------
