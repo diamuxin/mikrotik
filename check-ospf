@@ -1,0 +1,60 @@
+# Check OSPF Network from site A
+
+:local DeviceName [/system identity get name]
+:local add1 "172.17.0.1" # site B
+:local add2 "172.17.20.2" # site C
+:local inS "V2"
+
+/routing ospf neighbor
+:if ([:len [find ((address=$add1) and (state="Full")) ]] > 0) do={
+    :log info "[OSPF] neighbor to SiteB is UP"
+} else={
+    :log info "[OSPF] neighbor to SiteB is DOWN"
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 $DeviceName: [OSPF] neighbor to SiteB is DOWN"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+
+    :delay 10s
+    # Reset OSPF
+    /routing ospf instance
+    set [find name=$inS] disabled=yes; :delay 2s; set [find name=$inS] disabled=no
+
+    # We check again if OSPF has recovered
+    :delay 60
+    :if ([:len [find ((address=$add1) and (state="Full")) ]] > 0) do={
+    # START Send Telegram Module
+    :local MessageText "\E2\9C\85 $DeviceName: [OSPF] neighbor to SiteB has recovered"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+    }
+}
+
+/routing ospf neighbor
+:if ([:len [find ((address=$add2) and (state="Full")) ]] > 0) do={
+    :log info "[OSPF] neighbor to SiteC is UP"
+} else={
+    :log info "[OSPF] neighbor to SiteC is DOWN"
+    # START Send Telegram Module
+    :local MessageText "\E2\9A\A0 $DeviceName: [OSPF] neighbor to SiteC is DOWN"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+
+    :delay 10s
+    # Reset OSPF
+    /routing ospf instance
+    set [find name=$inS] disabled=yes; :delay 2s; set [find name=$inS] disabled=no
+
+    # We check again if OSPF has recovered
+    :delay 60
+    :if ([:len [find ((address=$add2) and (state="Full")) ]] > 0) do={
+    # START Send Telegram Module
+    :local MessageText "\E2\9C\85 $DeviceName: [OSPF] neighbor to SiteC has recovered"
+    :local SendTelegramMessage [:parse [/system script get MyTGBotSendMessage source]]
+    $SendTelegramMessage MessageText=$MessageText
+    # END Send Telegram Module
+    }
+}
