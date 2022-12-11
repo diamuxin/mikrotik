@@ -1,4 +1,4 @@
-:global date2dmy do={
+:global date2ymd do={
     :local yyyy [:pick $1 7 11]; :local dd [:pick $1 4 6]
     :local MM ([:find "xxanebarprayunulugepctovec" [:pick $1 1 3] -1]/2); :if ($MM < 10) do={:set MM "0$MM"}
     :local HH [:pick $1 12 14]; :local mm [:pick $1 15 17]; :local ss [:pick $1 18 20]
